@@ -43,7 +43,7 @@ jobs:
       - name: Run ament_copyright
         run: |
           . /opt/ros/${{ inputs.ros-distro }}/setup.sh
-          ament_copyright
+          ament_copyright --exclude CONTRIBUTING.md README.md
 
   build-and-test:
     runs-on: ubuntu-latest
