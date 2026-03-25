@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - name: Install ament linters
         run: pip install ament-flake8 ament-pep257 ament-copyright
@@ -51,6 +50,9 @@ jobs:
     timeout-minutes: 10
     container:
       image: ${{ inputs.container-image || format('ghcr.io/{0}/ros-ci:{1}', github.repository_owner, inputs.ros-distro) }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
