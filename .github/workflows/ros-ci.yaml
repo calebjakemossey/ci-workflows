@@ -117,10 +117,23 @@ jobs:
           name: ros-test-results
           path: /ros_ws/build/**/test_results/**/*.xml
 
+  # Publish test results as a separate job running outside the container
+  # (dorny/test-reporter requires git access which isn't available in /ros_ws)
+  report-results:
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: ros-test-results
+          path: test-results
+
       - name: Publish test results
-        if: always()
         uses: dorny/test-reporter@v1
         with:
           name: ROS Test Results
-          path: /ros_ws/build/**/test_results/**/*.xml
+          path: 'test-results/**/*.xml'
           reporter: java-junit
