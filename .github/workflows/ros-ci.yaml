@@ -54,6 +54,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
     steps:
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory '*'
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -62,11 +65,11 @@ jobs:
       - name: Set up workspace
         env:
           REPOS_FILE: ${{ inputs.repos-file }}
-        working-directory: /ros_ws
         run: |
+          mkdir -p /ros_ws/src
           cp -r $GITHUB_WORKSPACE/src/repo /ros_ws/src/repo
           if [ -f "/ros_ws/src/repo/${REPOS_FILE}" ]; then
-            vcs import src < "/ros_ws/src/repo/${REPOS_FILE}"
+            cd /ros_ws && vcs import src < "/ros_ws/src/repo/${REPOS_FILE}"
           fi
 
       - name: Cache colcon workspace

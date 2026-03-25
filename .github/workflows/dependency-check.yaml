@@ -31,6 +31,9 @@ jobs:
     container:
       image: ${{ inputs.container-image || format('ghcr.io/{0}/ros-ci:{1}', github.repository_owner, inputs.ros-distro) }}
     steps:
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory '*'
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -40,13 +43,12 @@ jobs:
         env:
           UPSTREAM_REPO: ${{ inputs.upstream-repo }}
           UPSTREAM_REF: ${{ inputs.upstream-ref }}
-        working-directory: /ros_ws
         run: |
+          mkdir -p /ros_ws/src
           git clone --depth 1 --branch "${UPSTREAM_REF}" \
-            "https://github.com/${UPSTREAM_REPO}.git" src/upstream
+            "https://github.com/${UPSTREAM_REPO}.git" /ros_ws/src/upstream
 
       - name: Set up workspace
-        working-directory: /ros_ws
         run: cp -r $GITHUB_WORKSPACE/src/repo /ros_ws/src/repo
 
       - name: Install rosdep dependencies
