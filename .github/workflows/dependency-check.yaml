@@ -1,0 +1,77 @@
+name: Dependency Check
+
+on:
+  workflow_call:
+    inputs:
+      upstream-repo:
+        description: Upstream repository (owner/repo format)
+        type: string
+        required: true
+      upstream-ref:
+        description: Upstream branch or tag to test against
+        type: string
+        default: main
+      ros-distro:
+        description: ROS distribution
+        type: string
+        default: humble
+      container-image:
+        description: Override container image (default uses ros-ci from GHCR)
+        type: string
+        default: ""
+
+concurrency:
+  group: dep-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compat-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: ${{ inputs.container-image || format('ghcr.io/{0}/ros-ci:{1}', github.repository_owner, inputs.ros-distro) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: src/repo
+
+      - name: Clone upstream
+        env:
+          UPSTREAM_REPO: ${{ inputs.upstream-repo }}
+          UPSTREAM_REF: ${{ inputs.upstream-ref }}
+        working-directory: /ros_ws
+        run: |
+          git clone --depth 1 --branch "${UPSTREAM_REF}" \
+            "https://github.com/${UPSTREAM_REPO}.git" src/upstream
+
+      - name: Set up workspace
+        working-directory: /ros_ws
+        run: cp -r $GITHUB_WORKSPACE/src/repo /ros_ws/src/repo
+
+      - name: Install rosdep dependencies
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
+
+      - name: Build
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          colcon build --symlink-install
+
+      - name: Test
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          . install/setup.sh
+          colcon test
+          colcon test-result --verbose
