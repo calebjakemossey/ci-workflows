@@ -1,0 +1,46 @@
+# Generic release Dockerfile for ROS2 packages
+# Used by the release.yaml reusable workflow to build deployable
+# images for each hardware variant. Individual repos provide their
+# source code and variant config - this Dockerfile handles the build.
+
+ARG ROS_DISTRO=humble
+FROM ros:${ROS_DISTRO}
+
+ARG VARIANT=v1
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    python3-vcstool \
+    python3-colcon-common-extensions \
+    python3-rosdep \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rosdep init || true && rosdep update
+
+WORKDIR /ros_ws
+
+# Source code is copied in by the build context (the calling repo)
+COPY . src/repo/
+
+# Fetch cross-repo dependencies if workspace.repos exists
+RUN if [ -f src/repo/workspace.repos ]; then \
+      vcs import src < src/repo/workspace.repos; \
+    fi
+
+# Install system dependencies and build
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --symlink-install
+
+# Copy variant-specific configuration if it exists
+RUN if [ -d src/repo/config/${VARIANT} ]; then \
+      cp -r src/repo/config/${VARIANT}/ /ros_ws/config/; \
+    fi
+
+# Source workspace on container start
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /etc/bash.bashrc && \
+    echo "source /ros_ws/install/local_setup.bash" >> /etc/bash.bashrc
+
+CMD ["bash"]
