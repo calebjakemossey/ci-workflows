@@ -76,6 +76,16 @@ The image is rebuilt automatically when the `Dockerfile` changes on `main`.
 - [CI/CD Architecture Document](https://github.com/calebjakemossey/ci-workflows/wiki/CI-CD-Architecture) *(placeholder)*
 - [Pipeline Specification](https://github.com/calebjakemossey/ci-workflows/wiki/Pipeline-Specification) *(placeholder)*
 
+## Divergences from Assignment Requirements
+
+The following decisions differ from the original assignment brief, with reasoning:
+
+| Requirement | Implementation | Reasoning |
+|-------------|---------------|-----------|
+| Private repositories | **Public** | GitHub's free plan does not support branch protection rules on private repos. Public repos allow us to enforce CI status checks and demonstrate the full PR workflow. In production, these would be private with a paid GitHub plan. |
+| ROS2 Iron | **ROS2 Humble** | The starter code referenced Iron, which reached end-of-life in December 2024 and no longer receives updates or security patches. Humble is the current LTS distribution (supported until May 2027). |
+| Required PR approvals | **CI checks only** | A solo developer cannot approve their own PRs on GitHub. Branch protection requires CI status checks to pass. The review process is documented in CODEOWNERS and CONTRIBUTING.md for team use. |
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on modifying workflows and testing changes.
