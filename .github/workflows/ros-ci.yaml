@@ -24,26 +24,26 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    container:
+      image: ${{ inputs.container-image || format('ghcr.io/{0}/ros-ci:{1}', github.repository_owner, inputs.ros-distro) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install ament linters
-        run: pip install ament-flake8 ament-pep257 ament-copyright
-
       - name: Run ament_flake8
-        run: python -m ament_flake8
+        run: |
+          . /opt/ros/${{ inputs.ros-distro }}/setup.sh
+          ament_flake8
 
       - name: Run ament_pep257
-        run: python -m ament_pep257
+        run: |
+          . /opt/ros/${{ inputs.ros-distro }}/setup.sh
+          ament_pep257
 
       - name: Run ament_copyright
-        run: python -m ament_copyright
+        run: |
+          . /opt/ros/${{ inputs.ros-distro }}/setup.sh
+          ament_copyright
 
   build-and-test:
     runs-on: ubuntu-latest
