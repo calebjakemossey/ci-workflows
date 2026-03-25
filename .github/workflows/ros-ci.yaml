@@ -43,7 +43,7 @@ jobs:
       - name: Run ament_copyright
         run: |
           . /opt/ros/${{ inputs.ros-distro }}/setup.sh
-          ament_copyright --exclude CONTRIBUTING.md README.md
+          find . -name '*.py' -not -path './build/*' -not -path './install/*' | xargs ament_copyright
 
   build-and-test:
     runs-on: ubuntu-latest
