@@ -1,0 +1,121 @@
+name: ROS CI
+
+on:
+  workflow_call:
+    inputs:
+      ros-distro:
+        description: ROS distribution
+        type: string
+        default: humble
+      repos-file:
+        description: Path to .repos file for vcs import
+        type: string
+        default: workspace.repos
+      container-image:
+        description: Override container image (default uses ros-ci from GHCR)
+        type: string
+        default: ""
+
+concurrency:
+  group: ros-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ament linters
+        run: pip install ament-flake8 ament-pep257 ament-copyright
+
+      - name: Run ament_flake8
+        run: python -m ament_flake8
+
+      - name: Run ament_pep257
+        run: python -m ament_pep257
+
+      - name: Run ament_copyright
+        run: python -m ament_copyright
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: ${{ inputs.container-image || format('ghcr.io/{0}/ros-ci:{1}', github.repository_owner, inputs.ros-distro) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: src/repo
+
+      - name: Set up workspace
+        env:
+          REPOS_FILE: ${{ inputs.repos-file }}
+        working-directory: /ros_ws
+        run: |
+          cp -r $GITHUB_WORKSPACE/src/repo /ros_ws/src/repo
+          if [ -f "/ros_ws/src/repo/${REPOS_FILE}" ]; then
+            vcs import src < "/ros_ws/src/repo/${REPOS_FILE}"
+          fi
+
+      - name: Cache colcon workspace
+        uses: actions/cache@v4
+        with:
+          path: |
+            /ros_ws/build
+            /ros_ws/install
+            /ros_ws/log
+          key: colcon-${{ inputs.ros-distro }}-${{ hashFiles('**/package.xml') }}
+          restore-keys: |
+            colcon-${{ inputs.ros-distro }}-
+
+      - name: Install rosdep dependencies
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
+
+      - name: Build
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          colcon build --symlink-install
+
+      - name: Test
+        env:
+          ROS_DISTRO: ${{ inputs.ros-distro }}
+        working-directory: /ros_ws
+        run: |
+          . /opt/ros/${ROS_DISTRO}/setup.sh
+          . install/setup.sh
+          colcon test
+          colcon test-result --verbose
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-test-results
+          path: /ros_ws/build/**/test_results/**/*.xml
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: ROS Test Results
+          path: /ros_ws/build/**/test_results/**/*.xml
+          reporter: java-junit
