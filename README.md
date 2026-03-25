@@ -12,7 +12,6 @@ graph TB
         IMG[ros-ci:humble Docker Image]
         PY[python-ci.yaml]
         ROS[ros-ci.yaml]
-        DEP[dependency-check.yaml]
         REL[release.yaml]
     end
 
@@ -23,11 +22,8 @@ graph TB
     subgraph assignment_example_ros_pkg
         ROS_CI[CI Pipeline] -->|uses| ROS
         ROS_CI -->|runs in| IMG
-        COMPAT[Compat Check] -->|uses| DEP
         RELEASE[Release Build] -->|uses| REL
     end
-
-    assignment_example_pkg -->|cross-repo trigger| COMPAT
 ```
 
 ## Reusable Workflows
@@ -36,7 +32,6 @@ graph TB
 |----------|------|---------|------------|
 | **Python CI** | `python-ci.yaml` | Lint and test Python packages | `python-versions`, `test-command`, `lint` |
 | **ROS CI** | `ros-ci.yaml` | Lint, build, and test ROS2 packages | `ros-distro`, `repos-file`, `container-image` |
-| **Dependency Check** | `dependency-check.yaml` | Verify compatibility with upstream repos | `upstream-repo`, `upstream-ref`, `ros-distro` |
 | **Release** | `release.yaml` | Build variant Docker images on release | `variants`, `image-name`, `ros-distro` |
 
 ### Usage example
