@@ -1,0 +1,87 @@
+name: Python CI
+
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: JSON array of Python versions to test
+        type: string
+        default: '["3.10", "3.11", "3.12"]'
+      test-command:
+        description: Command to run tests
+        type: string
+        default: python -m unittest discover
+      lint:
+        description: Whether to run linting
+        type: boolean
+        default: true
+
+concurrency:
+  group: python-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    if: ${{ inputs.lint }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run flake8
+        run: flake8 .
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ${{ fromJson(inputs.python-versions) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install .
+
+      - name: Run tests
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: |
+          pip install junitxml
+          $TEST_COMMAND --junitxml=test-results.xml || $TEST_COMMAND
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: test-results.xml
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results (Python ${{ matrix.python-version }})
+          path: test-results.xml
+          reporter: java-junit
