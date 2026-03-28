@@ -1,81 +1,86 @@
 # ci-workflows
 
-Shared CI infrastructure for the `calebjakemossey` organisation. Provides reusable GitHub Actions workflows and a pre-built Docker image for ROS2 CI pipelines.
+Shared CI/CD infrastructure for the robotics demo project. Provides Docker images for ROS2 CI environments and a reusable release workflow for building deployable artefacts.
 
 [![Build CI Image](https://github.com/calebjakemossey/ci-workflows/actions/workflows/build-ci-image.yaml/badge.svg)](https://github.com/calebjakemossey/ci-workflows/actions/workflows/build-ci-image.yaml)
 
-## Architecture
+## What This Repo Provides
 
 ```mermaid
 graph TB
-    subgraph ci-workflows
-        IMG[ros-ci:humble Docker Image]
-        REL[release.yaml]
+    subgraph "Docker Images"
+        DF[Dockerfile] -->|builds| CI_IMG[ros-ci:humble<br/>CI environment with ROS2,<br/>colcon, vcstool, rosdep]
+        DFR[Dockerfile.release] -->|used by| REL_IMG[Variant release images<br/>Deployable artefacts per<br/>hardware configuration]
     end
 
-    subgraph assignment_example_pkg
-        PY_CI[Inline CI Pipeline]
+    subgraph "Workflows"
+        BUILD[build-ci-image.yaml<br/>Builds and pushes ros-ci:humble<br/>to GHCR on Dockerfile changes]
+        RELEASE[release.yaml<br/>Reusable: builds variant Docker<br/>images on tag push]
     end
 
-    subgraph assignment_example_ros_pkg
-        ROS_CI[Inline CI Pipeline] -->|runs in| IMG
-        RELEASE[Release Build] -->|uses| REL
-    end
+    DF --> BUILD
+    DFR --> RELEASE
 ```
 
-Each application repo owns its own CI workflow inline. ci-workflows provides the shared release workflow and Docker images.
+## Docker Images
 
-## Shared Workflows
+### `ros-ci:humble` - CI Environment
 
-| Workflow | File | Purpose | Key Inputs |
-|----------|------|---------|------------|
-| **Release** | `release.yaml` | Build variant Docker images on release | `variants`, `image-name`, `ros-distro` |
+Used by application repos as the container for building and testing ROS2 packages.
 
-### Usage example
-
-```yaml
-# In your repo's .github/workflows/release.yaml
-name: Release
-on:
-  release:
-    types: [published]
-
-jobs:
-  release:
-    uses: calebjakemossey/ci-workflows/.github/workflows/release.yaml@v1
-    with:
-      ros-distro: humble
-    permissions:
-      contents: read
-      packages: write
-```
-
-## Docker Image
-
-The `ros-ci:humble` image is built from the `Dockerfile` in this repo and published to GHCR.
-
-**Pull it:**
 ```bash
 docker pull ghcr.io/calebjakemossey/ros-ci:humble
 ```
 
-**What's installed:**
-- Base: `ros:humble`
+**Contents:**
+- Base: `ros:humble` (Ubuntu 22.04)
 - `python3-vcstool` - multi-repo workspace management
 - `python3-colcon-common-extensions` - ROS2 build tool
 - `python3-rosdep` - dependency resolution (initialised)
 - `pytest` - Python test runner
 
-The image is rebuilt automatically when the `Dockerfile` changes on `main`.
+Rebuilt automatically when the `Dockerfile` changes on `main` via [build-ci-image.yaml](.github/workflows/build-ci-image.yaml).
 
-## Deliverable Documents
+### `Dockerfile.release` - Generic Release Image
 
-- [CI/CD Architecture Document](https://github.com/calebjakemossey/ci-workflows/wiki/CI-CD-Architecture) *(placeholder)*
-- [Pipeline Specification](https://github.com/calebjakemossey/ci-workflows/wiki/Pipeline-Specification) *(placeholder)*
+Used by the [release.yaml](.github/workflows/release.yaml) workflow to build deployable images for each hardware variant. Application repos provide their source code and optional `config/<variant>/` directories - this Dockerfile handles dependency fetching, building, and variant configuration.
+
+See [release.yaml](.github/workflows/release.yaml) for details.
+
+## Workflows
+
+### `build-ci-image.yaml`
+
+Builds the `ros-ci:humble` Docker image and pushes it to GHCR. Triggers when the `Dockerfile` changes on `main` or via manual dispatch.
+
+See [build-ci-image.yaml](.github/workflows/build-ci-image.yaml).
+
+### `release.yaml` (reusable)
+
+Reusable workflow that builds deployable Docker images for each hardware variant on tag push. Uses `Dockerfile.release` from this repo with the calling repo's source as build context.
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ros-distro` | string | `humble` | ROS2 distribution |
+| `variants` | string (JSON list) | `["v1", "v2"]` | Hardware variants to build |
+| `image-name` | string | required | Base image name |
+
+**Caller example:**
+```yaml
+jobs:
+  release:
+    uses: calebjakemossey/ci-workflows/.github/workflows/release.yaml@v1
+    with:
+      image-name: robot-software
+      variants: '["v1", "v2"]'
+      ros-distro: humble
+    secrets:
+      registry-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+See [release.yaml](.github/workflows/release.yaml).
 
 ## Divergences from Assignment Requirements
-
-The following decisions differ from the original assignment brief, with reasoning:
 
 | Requirement | Implementation | Reasoning |
 |-------------|---------------|-----------|
