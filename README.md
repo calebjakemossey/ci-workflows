@@ -7,15 +7,20 @@ Shared CI/CD infrastructure for the robotics demo project. Provides Docker image
 ## What This Repo Provides
 
 ```mermaid
+%%{init: {'theme': 'dark', 'flowchart': {'curve': 'linear'}}}%%
 graph TB
+    classDef primary fill:#2d5986,stroke:#4a90d9,stroke-width:1px,color:#e0e0e0,rx:8,ry:8
+    classDef secondary fill:#1a3a5c,stroke:#3d7ab5,stroke-width:1px,color:#e0e0e0,rx:8,ry:8
+    classDef accent fill:#2d7d46,stroke:#4caf50,stroke-width:1px,color:#e0e0e0,rx:8,ry:8
+
     subgraph "Docker Images"
-        DF[Dockerfile] -->|builds| CI_IMG[ros-ci:humble<br/>CI environment with ROS2,<br/>colcon, vcstool, rosdep]
-        DFR[Dockerfile.release] -->|used by| REL_IMG[Variant release images<br/>Deployable artefacts per<br/>hardware configuration]
+        DF[Dockerfile]:::primary -->|builds| CI_IMG[ros-ci:humble<br/>CI environment with ROS2,<br/>colcon, vcstool, rosdep]:::accent
+        DFR[Dockerfile.release]:::primary -->|used by| REL_IMG[Variant release images<br/>Deployable artefacts per<br/>hardware configuration]:::accent
     end
 
     subgraph "Workflows"
-        BUILD[build-ci-image.yaml<br/>Builds and pushes ros-ci:humble<br/>to GHCR on Dockerfile changes]
-        RELEASE[release.yaml<br/>Reusable: builds variant Docker<br/>images on tag push]
+        BUILD[build-ci-image.yaml<br/>Builds and pushes ros-ci:humble<br/>to GHCR on Dockerfile changes]:::secondary
+        RELEASE[release.yaml<br/>Reusable: builds variant Docker<br/>images on tag push]:::secondary
     end
 
     DF --> BUILD
