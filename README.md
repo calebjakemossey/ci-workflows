@@ -10,42 +10,44 @@ Shared CI infrastructure for the `calebjakemossey` organisation. Provides reusab
 graph TB
     subgraph ci-workflows
         IMG[ros-ci:humble Docker Image]
-        PY[python-ci.yaml]
-        ROS[ros-ci.yaml]
         REL[release.yaml]
     end
 
     subgraph assignment_example_pkg
-        PY_CI[CI Pipeline] -->|uses| PY
+        PY_CI[Inline CI Pipeline]
     end
 
     subgraph assignment_example_ros_pkg
-        ROS_CI[CI Pipeline] -->|uses| ROS
-        ROS_CI -->|runs in| IMG
+        ROS_CI[Inline CI Pipeline] -->|runs in| IMG
         RELEASE[Release Build] -->|uses| REL
     end
 ```
 
-## Reusable Workflows
+Each application repo owns its own CI workflow inline. ci-workflows provides the shared release workflow and Docker images.
+
+## Shared Workflows
 
 | Workflow | File | Purpose | Key Inputs |
 |----------|------|---------|------------|
-| **Python CI** | `python-ci.yaml` | Lint and test Python packages | `python-versions`, `test-command`, `lint` |
-| **ROS CI** | `ros-ci.yaml` | Lint, build, and test ROS2 packages | `ros-distro`, `repos-file`, `container-image` |
 | **Release** | `release.yaml` | Build variant Docker images on release | `variants`, `image-name`, `ros-distro` |
 
 ### Usage example
 
 ```yaml
-# In your repo's .github/workflows/ci.yaml
-name: CI
-on: [push, pull_request]
+# In your repo's .github/workflows/release.yaml
+name: Release
+on:
+  release:
+    types: [published]
 
 jobs:
-  ci:
-    uses: calebjakemossey/ci-workflows/.github/workflows/ros-ci.yaml@v1
+  release:
+    uses: calebjakemossey/ci-workflows/.github/workflows/release.yaml@v1
     with:
       ros-distro: humble
+    permissions:
+      contents: read
+      packages: write
 ```
 
 ## Docker Image
