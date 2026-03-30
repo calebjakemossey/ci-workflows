@@ -82,14 +82,6 @@ jobs:
 
 See [release.yaml](.github/workflows/release.yaml).
 
-## Deliverable Documents
-
-| Document | Description |
-|----------|-------------|
-| [overview.md](overview.md) | Solution overview, requirements coverage, architecture, E2E test results, future improvements |
-| [files.md](files.md) | Complete list of all files added across all four repos |
-| [access.md](access.md) | Repository URLs, CI pipeline links, Docker image pull commands, demo PR links |
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on modifying workflows and testing changes.
