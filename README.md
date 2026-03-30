@@ -15,12 +15,12 @@ graph TB
 
     subgraph "Docker Images"
         DF[Dockerfile]:::primary -->|builds| CI_IMG[ros-ci:humble<br/>CI environment with ROS2,<br/>colcon, vcstool, rosdep]:::accent
-        DFR[Dockerfile.release]:::primary -->|used by| REL_IMG[Variant release images<br/>Deployable artefacts per<br/>hardware configuration]:::accent
+        DFR[Dockerfile.release]:::primary -->|used by| REL_IMG[Package release images<br/>Deployable artefacts per<br/>tagged repository]:::accent
     end
 
     subgraph "Workflows"
         BUILD[build-ci-image.yaml<br/>Builds and pushes ros-ci:humble<br/>to GHCR on Dockerfile changes]:::secondary
-        RELEASE[release.yaml<br/>Reusable: builds variant Docker<br/>images on tag push]:::secondary
+        RELEASE[release.yaml<br/>Reusable: builds package Docker<br/>image on tag push, creates<br/>GitHub Release]:::secondary
     end
 
     DF --> BUILD
@@ -48,9 +48,7 @@ Rebuilt automatically when the `Dockerfile` changes on `main` via [build-ci-imag
 
 ### `Dockerfile.release` - Generic Release Image
 
-Used by the [release.yaml](.github/workflows/release.yaml) workflow to build deployable images for each hardware variant. Application repos provide their source code and optional `config/<variant>/` directories - this Dockerfile handles dependency fetching, building, and variant configuration.
-
-See [release.yaml](.github/workflows/release.yaml) for details.
+Used by the [release.yaml](.github/workflows/release.yaml) workflow to build deployable images for individual packages. Application repos provide their source code - this Dockerfile handles dependency fetching and building. The same Dockerfile works across all ROS2 repos, avoiding duplication.
 
 ## Workflows
 
@@ -62,13 +60,13 @@ See [build-ci-image.yaml](.github/workflows/build-ci-image.yaml).
 
 ### `release.yaml` (reusable)
 
-Reusable workflow that builds deployable Docker images for each hardware variant on tag push. Uses `Dockerfile.release` from this repo with the calling repo's source as build context.
+Reusable workflow that builds a Docker image for a package and creates a GitHub Release. Called by application repos when they push a version tag. Uses `Dockerfile.release` from this repo with the calling repo's source as build context.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `ros-distro` | string | `humble` | ROS2 distribution |
-| `variants` | string (JSON list) | `["v1", "v2"]` | Hardware variants to build |
-| `image-name` | string | required | Base image name |
+| `registry` | string | `ghcr.io/<owner>` | Container registry prefix |
+| `image-name` | string | required | Image name (e.g., `assignment-example-ros-pkg`) |
 
 **Caller example:**
 ```yaml
@@ -76,14 +74,21 @@ jobs:
   release:
     uses: calebjakemossey/ci-workflows/.github/workflows/release.yaml@v1
     with:
-      image-name: robot-software
-      variants: '["v1", "v2"]'
+      image-name: assignment-example-ros-pkg
       ros-distro: humble
     secrets:
       registry-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 See [release.yaml](.github/workflows/release.yaml).
+
+## Deliverable Documents
+
+| Document | Description |
+|----------|-------------|
+| [overview.md](overview.md) | Solution overview, requirements coverage, architecture, E2E test results, future improvements |
+| [files.md](files.md) | Complete list of all files added across all four repos |
+| [access.md](access.md) | Repository URLs, CI pipeline links, Docker image pull commands, demo PR links |
 
 ## Contributing
 
