@@ -7,12 +7,8 @@ on:
         description: ROS distribution
         type: string
         default: humble
-      variants:
-        description: JSON array of build variants
-        type: string
-        default: '["v1", "v2"]'
       registry:
-        description: Container registry (defaults to ghcr.io)
+        description: Container registry (defaults to ghcr.io/<owner>)
         type: string
         default: ""
       image-name:
@@ -29,13 +25,9 @@ permissions:
   packages: write
 
 jobs:
-  build-variant:
+  build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      matrix:
-        variant: ${{ fromJson(inputs.variants) }}
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
 
@@ -69,9 +61,8 @@ jobs:
           push: true
           build-args: |
             ROS_DISTRO=${{ inputs.ros-distro }}
-            VARIANT=${{ matrix.variant }}
           tags: |
-            ${{ steps.registry.outputs.prefix }}/${{ inputs.image-name }}:${{ steps.version.outputs.version }}-${{ matrix.variant }}
-            ${{ steps.registry.outputs.prefix }}/${{ inputs.image-name }}:latest-${{ matrix.variant }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,scope=${{ matrix.variant }},mode=max
+            ${{ steps.registry.outputs.prefix }}/${{ inputs.image-name }}:${{ steps.version.outputs.version }}
+            ${{ steps.registry.outputs.prefix }}/${{ inputs.image-name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
