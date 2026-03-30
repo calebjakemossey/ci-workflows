@@ -73,8 +73,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set registry prefix
         id: registry
@@ -82,7 +80,7 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.registry-token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
           IMAGE="${{ steps.registry.outputs.prefix }}/${{ inputs.image-name }}:${TAG}"
